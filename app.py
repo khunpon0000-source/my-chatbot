@@ -5,7 +5,7 @@ import google.generativeai as genai
 app = Flask(__name__)
 
 # 1. ตั้งค่า API Key (เอามาจาก Google AI Studio)
-API_KEY = "ใส่_API_KEY_จริงของคุณที่นี่"
+API_KEY = "AIzaSyDIOm4as7eAngL7-_FyZfSDSUG0P9kzGDs"
 genai.configure(api_key=API_KEY)
 
 # 2. ตั้งค่า "สมอง" และ "บุคลิก" ของบอท
@@ -44,3 +44,4 @@ def chat():
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
+
