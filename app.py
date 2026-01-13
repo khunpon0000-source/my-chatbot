@@ -1,38 +1,21 @@
-print("APP STARTED")
-
-from flask import Flask, request, jsonify, render_template
-import random
 import os
+from flask import Flask, request, jsonify, render_template
+import google.generativeai as genai
 
 app = Flask(__name__)
 
-# ดึง Dictionary คำตอบจากโค้ดเดิมของคุณ (ย่อเพื่อประหยัดพื้นที่ แต่ให้ใช้ชุดข้อมูลเดิมได้เลย)
-replies = {
-    'th': {
-        'สวัสดี': ["หวัดดีฮะ มีอะไรให้กัดกลับคะ?", "ว่าไง พูดมาสิ อย่าช้า","ไอพวกเตี่ยวกูให้หมดแหละ"],
-        'ชื่อ': ["ฉันชื่อบอท ไม่ได้ชื่อปัญญาอ่อนเหมือนพวกมึง", "ถามชื่อทำไม? จะชวนไปสุกกี้หม้อรวมหรอ"],
-        'default': ["โอ้โห คำถามนี้ปัญญาอ่อนจัง 😆", "ถามมาได้ เรื่องแค่นี้มึงไม่รู้ไงไอควาย 😏","ไอดำไปฝ้ายไป"]
-    },
-    'en': {
-        'hello': ["Ugh, what do you want?", "Sup? Make it quick.","NIGGER GO PICK COTTON" ],
-        'name': ["I'm your father, not your buddy.", "Short and boring, just like your question.","NIGGER"]
-        'default': ["Whoa, that question is stupid 😆", "Honestly, I'm bored. Ask something better."]
-    }
-    # ... เพิ่ม ru, ja ตามโค้ดเดิมของคุณได้เลย ...
-}
+# 1. ตั้งค่า API Key (เอามาจาก Google AI Studio)
+API_KEY = "ใส่_API_KEY_จริงของคุณที่นี่"
+genai.configure(api_key=API_KEY)
 
-def get_reply(user_message, lang_code):
-    msg = user_message.lower()
-    lang_data = replies.get(lang_code, replies['th'])
-    
-    # เรียงลำดับ keyword จากยาวไปสั้น
-    keywords = sorted([k for k in lang_data.keys() if k != 'default'], key=len, reverse=True)
-    
-    for kw in keywords:
-        if kw in msg:
-            return random.choice(lang_data[kw])
-    
-    return random.choice(lang_data['default'])
+# 2. ตั้งค่า "สมอง" และ "บุคลิก" ของบอท
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-flash",
+    system_instruction="คุณคือ 'พี่เมฆ' ที่ปรึกษาที่อบอุ่น ใจดี รับฟังเก่ง และพร้อมให้กำลังใจเสมอ คุยเป็นกันเองเหมือนพี่น้อง"
+)
+
+# 3. สร้างระบบจำประวัติการคุย (เพื่อให้คุยต่อเนื่องได้)
+chat_sessions = {}
 
 @app.route("/")
 def home():
@@ -42,11 +25,22 @@ def home():
 def chat():
     data = request.get_json()
     user_msg = data.get("message", "")
-    lang = data.get("lang", "th")
-    reply = get_reply(user_msg, lang)
+    
+    # ดึงประวัติการคุยเดิมมาใช้ ถ้าไม่มีให้เริ่มใหม่
+    if "user_session" not in chat_sessions:
+        chat_sessions["user_session"] = model.start_chat(history=[])
+    
+    chat = chat_sessions["user_session"]
+
+    try:
+        # ส่งข้อความไปหา Gemini
+        response = chat.send_message(user_msg)
+        reply = response.text
+    except Exception as e:
+        print(f"Error: {e}")
+        reply = "ขอโทษทีนะ พี่มึนๆ นิดหน่อย ลองพิมพ์ใหม่ได้ไหมครับ?"
+
     return jsonify({"reply": reply})
 
 if __name__ == "__main__":
-    # host='0.0.0.0' เพื่อให้มือถือเข้าผ่าน IP คอมได้
-
     app.run(host='0.0.0.0', port=5000, debug=True)
